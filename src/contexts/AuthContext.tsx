@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('profiles')
       .select('id')
       .eq('username', username)
-      .single();
+      .maybeSingle();
 
     if (existingUser) {
       return { error: new Error('用户名已被使用') };
@@ -109,31 +109,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const redirectUrl = `${window.location.origin}/`;
 
-    const { data, error } = await supabase.auth.signUp({
+    // Pass username in metadata - the database trigger will create the profile
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
+        data: {
+          username,
+        },
       },
     });
 
     if (error) {
       return { error: new Error(error.message) };
-    }
-
-    // Create profile after successful signup
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          username,
-          email,
-        });
-
-      if (profileError) {
-        return { error: new Error('创建用户资料失败') };
-      }
     }
 
     return { error: null };
