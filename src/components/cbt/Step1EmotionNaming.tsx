@@ -2,14 +2,17 @@ import { motion } from 'framer-motion';
 import { EmotionThermometer } from './EmotionThermometer';
 import { EmotionButton } from './EmotionButton';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { EMOTIONS, EmotionType } from '@/types/cbt';
 import { ArrowRight } from 'lucide-react';
 
 interface Step1Props {
+  customEmotion: string;
   emotionIntensity: number;
   selectedEmotion: EmotionType | null;
   bodySensation: string;
+  onCustomEmotionChange: (value: string) => void;
   onIntensityChange: (value: number) => void;
   onEmotionSelect: (emotion: EmotionType) => void;
   onBodySensationChange: (value: string) => void;
@@ -18,9 +21,11 @@ interface Step1Props {
 }
 
 export function Step1EmotionNaming({
+  customEmotion,
   emotionIntensity,
   selectedEmotion,
   bodySensation,
+  onCustomEmotionChange,
   onIntensityChange,
   onEmotionSelect,
   onBodySensationChange,
@@ -39,6 +44,17 @@ export function Step1EmotionNaming({
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-semibold text-foreground">第一步：认识情绪</h2>
         <p className="text-muted-foreground">感受当下的情绪，给它命名</p>
+      </div>
+
+      {/* 自定义情绪输入 */}
+      <div className="space-y-3">
+        <h3 className="text-lg font-medium text-foreground">用一个词描述你的感受</h3>
+        <Input
+          placeholder="例如：迷茫、委屈、烦躁..."
+          value={customEmotion}
+          onChange={(e) => onCustomEmotionChange(e.target.value)}
+          className="rounded-2xl border-sage-light focus:border-sage bg-card h-12"
+        />
       </div>
 
       {/* 情绪温度计 */}
