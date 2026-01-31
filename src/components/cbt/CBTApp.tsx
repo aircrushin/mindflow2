@@ -79,6 +79,7 @@ export function CBTApp() {
               selectedEmotion={state.selectedEmotion}
               selectedAction={state.selectedAction}
               actionCompleted={state.actionCompleted}
+              sessionData={state}
               onSelectAction={setSelectedAction}
               onCompleteAction={completeAction}
               onBack={() => setStep(2)}

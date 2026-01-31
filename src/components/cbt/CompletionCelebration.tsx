@@ -1,11 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import { Button } from '@/components/ui/button';
-import { Heart, RefreshCw } from 'lucide-react';
+import { Heart, RefreshCw, Check, LogIn } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSaveSession } from '@/hooks/useCBTHistory';
+import { CBTSessionState } from '@/types/cbt';
 
 interface CompletionCelebrationProps {
   onReset: () => void;
+  sessionData: CBTSessionState;
 }
 
 const encouragements = [
@@ -16,8 +21,39 @@ const encouragements = [
   '这份努力值得被看见 🌈',
 ];
 
-export function CompletionCelebration({ onReset }: CompletionCelebrationProps) {
+export function CompletionCelebration({ onReset, sessionData }: CompletionCelebrationProps) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { saveSession, isLoggedIn } = useSaveSession();
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const hasSaved = useRef(false);
+
   const randomEncouragement = encouragements[Math.floor(Math.random() * encouragements.length)];
+
+  // Save session on mount if logged in
+  useEffect(() => {
+    if (isLoggedIn && !hasSaved.current) {
+      hasSaved.current = true;
+      setSaving(true);
+      saveSession({
+        customEmotion: sessionData.customEmotion,
+        selectedEmotion: sessionData.selectedEmotion,
+        emotionIntensity: sessionData.emotionIntensity,
+        bodySensation: sessionData.bodySensation,
+        automaticThought: sessionData.automaticThought,
+        detectedDistortions: sessionData.detectedDistortions,
+        aiQuestions: sessionData.aiQuestions,
+        balancedThought: sessionData.balancedThought,
+        selectedAction: sessionData.selectedAction,
+      }).then(({ error }) => {
+        setSaving(false);
+        if (!error) {
+          setSaved(true);
+        }
+      });
+    }
+  }, [isLoggedIn, saveSession, sessionData]);
 
   useEffect(() => {
     // 轻柔的 confetti 效果
@@ -89,6 +125,37 @@ export function CompletionCelebration({ onReset }: CompletionCelebrationProps) {
         </motion.p>
       </div>
 
+      {/* Save status */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.45 }}
+      >
+        {isLoggedIn ? (
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            {saving ? (
+              <>
+                <div className="w-4 h-4 border-2 border-sage border-t-transparent rounded-full animate-spin" />
+                <span>保存中...</span>
+              </>
+            ) : saved ? (
+              <>
+                <Check className="w-4 h-4 text-sage" />
+                <span className="text-sage">已保存到历史记录</span>
+              </>
+            ) : null}
+          </div>
+        ) : (
+          <button
+            onClick={() => navigate('/auth')}
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>登录后可保存记录</span>
+          </button>
+        )}
+      </motion.div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -106,6 +173,7 @@ export function CompletionCelebration({ onReset }: CompletionCelebrationProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.7 }}
+        className="flex flex-col sm:flex-row gap-3 justify-center"
       >
         <Button
           onClick={onReset}
@@ -115,6 +183,15 @@ export function CompletionCelebration({ onReset }: CompletionCelebrationProps) {
           <RefreshCw className="mr-2 h-4 w-4" />
           开始新的练习
         </Button>
+        {isLoggedIn && (
+          <Button
+            onClick={() => navigate('/history')}
+            variant="ghost"
+            className="rounded-2xl px-6 h-12"
+          >
+            查看历史记录
+          </Button>
+        )}
       </motion.div>
     </motion.div>
   );
