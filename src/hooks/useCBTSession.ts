@@ -3,6 +3,7 @@ import { CBTSessionState, EmotionType, COGNITIVE_DISTORTIONS, CRISIS_KEYWORDS } 
 
 const initialState: CBTSessionState = {
   step: 1,
+  customEmotion: '',
   emotionIntensity: 5,
   selectedEmotion: null,
   bodySensation: '',
@@ -20,6 +21,10 @@ export function useCBTSession() {
 
   const setStep = useCallback((step: 1 | 2 | 3) => {
     setState(prev => ({ ...prev, step }));
+  }, []);
+
+  const setCustomEmotion = useCallback((emotion: string) => {
+    setState(prev => ({ ...prev, customEmotion: emotion }));
   }, []);
 
   const setEmotionIntensity = useCallback((intensity: number) => {
@@ -78,11 +83,12 @@ export function useCBTSession() {
     setState(initialState);
   }, []);
 
-  const canProceedToStep2 = state.selectedEmotion !== null;
+  const canProceedToStep2 = state.selectedEmotion !== null || state.customEmotion.trim().length > 0;
   const canProceedToStep3 = state.automaticThought.trim().length > 0;
 
   return {
     state,
+    setCustomEmotion,
     setStep,
     setEmotionIntensity,
     setSelectedEmotion,

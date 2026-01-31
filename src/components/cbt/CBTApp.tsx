@@ -10,6 +10,7 @@ export function CBTApp() {
   const {
     state,
     setStep,
+    setCustomEmotion,
     setEmotionIntensity,
     setSelectedEmotion,
     setBodySensation,
@@ -42,9 +43,11 @@ export function CBTApp() {
           {state.step === 1 && (
             <Step1EmotionNaming
               key="step1"
+              customEmotion={state.customEmotion}
               emotionIntensity={state.emotionIntensity}
               selectedEmotion={state.selectedEmotion}
               bodySensation={state.bodySensation}
+              onCustomEmotionChange={setCustomEmotion}
               onIntensityChange={setEmotionIntensity}
               onEmotionSelect={setSelectedEmotion}
               onBodySensationChange={setBodySensation}
