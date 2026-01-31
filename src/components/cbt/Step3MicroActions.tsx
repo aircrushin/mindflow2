@@ -3,13 +3,14 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ActionCard } from './ActionCard';
 import { CompletionCelebration } from './CompletionCelebration';
-import { ACTION_RECOMMENDATIONS, EmotionType } from '@/types/cbt';
+import { ACTION_RECOMMENDATIONS, EmotionType, CBTSessionState } from '@/types/cbt';
 import { ArrowLeft } from 'lucide-react';
 
 interface Step3Props {
   selectedEmotion: EmotionType | null;
   selectedAction: string | null;
   actionCompleted: boolean;
+  sessionData: CBTSessionState;
   onSelectAction: (actionId: string) => void;
   onCompleteAction: () => void;
   onBack: () => void;
@@ -20,6 +21,7 @@ export function Step3MicroActions({
   selectedEmotion,
   selectedAction,
   actionCompleted,
+  sessionData,
   onSelectAction,
   onCompleteAction,
   onBack,
@@ -33,7 +35,7 @@ export function Step3MicroActions({
   }, [selectedEmotion]);
 
   if (actionCompleted) {
-    return <CompletionCelebration onReset={onReset} />;
+    return <CompletionCelebration onReset={onReset} sessionData={sessionData} />;
   }
 
   return (
