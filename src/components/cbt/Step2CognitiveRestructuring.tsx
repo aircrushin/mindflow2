@@ -54,6 +54,7 @@ export function Step2CognitiveRestructuring({
   const [hasRequestedAI, setHasRequestedAI] = useState(false);
   const [showCrisisModal, setShowCrisisModal] = useState(false);
   const [hasDismissedCrisis, setHasDismissedCrisis] = useState(false);
+  const [showRetry, setShowRetry] = useState(false);
 
   // 监听输入变化，检测敏感词
   useEffect(() => {
@@ -75,6 +76,15 @@ export function Step2CognitiveRestructuring({
 
     setIsLoadingAI(true);
     setHasRequestedAI(true);
+    setShowRetry(false);
+
+    // 10秒超时控制
+    const timeoutId = setTimeout(() => {
+      if (isLoadingAI) {
+        setIsLoadingAI(false);
+        setShowRetry(true);
+      }
+    }, 10000);
 
     try {
       const { data, error } = await supabase.functions.invoke('socratic-questions', {
@@ -85,22 +95,30 @@ export function Step2CognitiveRestructuring({
         },
       });
 
+      clearTimeout(timeoutId);
+
       if (error) throw error;
 
-      if (data?.questions) {
+      if (data?.questions && data.questions.length > 0) {
         onAiQuestionsReceived(data.questions);
+        setShowRetry(false);
+      } else {
+        setShowRetry(true);
       }
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('Error fetching AI questions:', error);
-      // 提供备用问题
-      onAiQuestionsReceived([
-        '如果你最好的朋友有这样的想法，你会对TA说什么？',
-        '有没有一些证据，可能和你现在想的不太一样？',
-      ]);
+      setShowRetry(true);
     } finally {
       setIsLoadingAI(false);
     }
   }, [automaticThought, selectedEmotion, detectedDistortions, isLoadingAI, onAiQuestionsReceived]);
+
+  const handleRetry = useCallback(() => {
+    setHasRequestedAI(false);
+    setShowRetry(false);
+    onAiQuestionsReceived([]);
+  }, [onAiQuestionsReceived]);
 
   return (
     <>
@@ -165,8 +183,13 @@ export function Step2CognitiveRestructuring({
       </div>
 
       {/* AI 苏格拉底式提问 */}
-      {(isLoadingAI || aiQuestions.length > 0) && (
-        <AIQuestionCard questions={aiQuestions} isLoading={isLoadingAI} />
+      {(isLoadingAI || aiQuestions.length > 0 || showRetry) && (
+        <AIQuestionCard 
+          questions={aiQuestions} 
+          isLoading={isLoadingAI} 
+          showRetry={showRetry}
+          onRetry={handleRetry}
+        />
       )}
 
       {/* 平衡思维输入 */}
