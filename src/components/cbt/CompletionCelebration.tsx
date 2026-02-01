@@ -1,12 +1,15 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
+import { toPng } from 'html-to-image';
 import { Button } from '@/components/ui/button';
-import { Heart, RefreshCw, Check, LogIn } from 'lucide-react';
+import { Heart, RefreshCw, Check, LogIn, Download, Share2, Link, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSaveSession } from '@/hooks/useCBTHistory';
 import { CBTSessionState } from '@/types/cbt';
+import { ShareCard } from './ShareCard';
+import { toast } from 'sonner';
 
 interface CompletionCelebrationProps {
   onReset: () => void;
@@ -28,6 +31,9 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const hasSaved = useRef(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(true);
 
   const randomEncouragement = encouragements[Math.floor(Math.random() * encouragements.length)];
 
@@ -90,46 +96,148 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
     frame();
   }, []);
 
+  // 下载图片
+  const handleDownload = useCallback(async () => {
+    if (!cardRef.current) return;
+
+    setIsDownloading(true);
+    try {
+      const dataUrl = await toPng(cardRef.current, {
+        quality: 1,
+        pixelRatio: 2,
+        backgroundColor: '#FAF9F6',
+      });
+
+      const link = document.createElement('a');
+      link.download = `mindflow-${new Date().toISOString().split('T')[0]}.png`;
+      link.href = dataUrl;
+      link.click();
+      toast.success('图片已保存');
+    } catch (error) {
+      console.error('Error generating image:', error);
+      toast.error('保存失败，请重试');
+    } finally {
+      setIsDownloading(false);
+    }
+  }, []);
+
+  // 复制分享链接
+  const handleCopyLink = useCallback(async () => {
+    const shareUrl = 'https://mindflow2.lovable.app';
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('链接已复制');
+    } catch (error) {
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = shareUrl;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      toast.success('链接已复制');
+    }
+  }, []);
+
+  // 原生分享
+  const handleNativeShare = useCallback(async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'MINDFLOW 情绪急救',
+          text: '我刚刚完成了一次情绪急救练习，推荐你也试试！',
+          url: 'https://mindflow2.lovable.app',
+        });
+      } catch (error) {
+        // User cancelled or error
+        if ((error as Error).name !== 'AbortError') {
+          handleCopyLink();
+        }
+      }
+    } else {
+      handleCopyLink();
+    }
+  }, [handleCopyLink]);
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="text-center space-y-8 py-8"
+      className="text-center space-y-6 py-4"
     >
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-        className="w-24 h-24 mx-auto rounded-full bg-lavender/20 flex items-center justify-center"
-      >
-        <Heart className="w-12 h-12 text-lavender fill-lavender/50" />
-      </motion.div>
-
-      <div className="space-y-3">
-        <motion.h2
+      {/* 分享卡片展示 */}
+      {showShareCard && (
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="text-2xl font-semibold text-foreground"
+          transition={{ delay: 0.2 }}
+          className="relative"
         >
-          情绪急救完成！
-        </motion.h2>
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="text-lg text-lavender"
-        >
-          {randomEncouragement}
-        </motion.p>
-      </div>
+          <div className="flex justify-center overflow-hidden">
+            <div className="transform scale-[0.85] origin-top">
+              <ShareCard ref={cardRef} sessionData={sessionData} />
+            </div>
+          </div>
 
-      {/* Save status */}
+          {/* 操作按钮 */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="flex justify-center gap-3 mt-4"
+          >
+            <Button
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="rounded-2xl bg-sage hover:bg-sage/90 text-sage-foreground"
+            >
+              {isDownloading ? (
+                <div className="w-4 h-4 border-2 border-sage-foreground border-t-transparent rounded-full animate-spin mr-2" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              保存图片
+            </Button>
+            <Button
+              onClick={handleNativeShare}
+              variant="outline"
+              className="rounded-2xl border-lavender hover:bg-lavender/10"
+            >
+              <Share2 className="mr-2 h-4 w-4" />
+              分享
+            </Button>
+            <Button
+              onClick={handleCopyLink}
+              variant="ghost"
+              size="icon"
+              className="rounded-xl"
+            >
+              <Link className="h-4 w-4" />
+            </Button>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* 鼓励语 */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.45 }}
+        transition={{ delay: 0.3 }}
+        className="space-y-2"
+      >
+        <div className="flex items-center justify-center gap-2">
+          <Heart className="w-5 h-5 text-lavender fill-lavender/50" />
+          <h2 className="text-xl font-semibold text-foreground">情绪急救完成！</h2>
+        </div>
+        <p className="text-lavender">{randomEncouragement}</p>
+      </motion.div>
+
+      {/* Save status */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
       >
         {isLoggedIn ? (
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -156,24 +264,12 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
         )}
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="bg-card rounded-3xl p-6 soft-shadow max-w-sm mx-auto"
-      >
-        <p className="text-muted-foreground leading-relaxed">
-          记住，情绪是暂时的。你刚刚用了几分钟时间，
-          <span className="text-foreground font-medium">认真地照顾了自己</span>。
-          这本身就是一种力量。
-        </p>
-      </motion.div>
-
+      {/* 底部按钮 */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.7 }}
-        className="flex flex-col sm:flex-row gap-3 justify-center"
+        transition={{ delay: 0.6 }}
+        className="flex flex-col sm:flex-row gap-3 justify-center pt-2"
       >
         <Button
           onClick={onReset}
