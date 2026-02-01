@@ -1,13 +1,16 @@
 import { motion } from 'framer-motion';
 import { TypewriterText } from './TypewriterText';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface AIQuestionCardProps {
   questions: string[];
   isLoading: boolean;
+  showRetry?: boolean;
+  onRetry?: () => void;
 }
 
-export function AIQuestionCard({ questions, isLoading }: AIQuestionCardProps) {
+export function AIQuestionCard({ questions, isLoading, showRetry, onRetry }: AIQuestionCardProps) {
   if (isLoading) {
     return (
       <motion.div
@@ -22,6 +25,32 @@ export function AIQuestionCard({ questions, isLoading }: AIQuestionCardProps) {
         <div className="space-y-2">
           <div className="h-4 bg-lavender/20 rounded-full w-3/4 animate-pulse" />
           <div className="h-4 bg-lavender/20 rounded-full w-1/2 animate-pulse" />
+        </div>
+      </motion.div>
+    );
+  }
+
+  // 显示重试状态
+  if (showRetry && questions.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-lavender/10 rounded-3xl p-5 border border-lavender/20"
+      >
+        <div className="flex flex-col items-center gap-3 py-2">
+          <p className="text-sm text-muted-foreground text-center">
+            AI 暂时无法回应，请稍后重试
+          </p>
+          <Button
+            onClick={onRetry}
+            variant="outline"
+            size="sm"
+            className="rounded-xl border-lavender/40 hover:bg-lavender/20"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            重新获取
+          </Button>
         </div>
       </motion.div>
     );
