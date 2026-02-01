@@ -123,7 +123,7 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
 
   // 复制分享链接
   const handleCopyLink = useCallback(async () => {
-    const shareUrl = "https://mind.lucids.top";
+    const shareUrl = "https://mindflow2.lovable.app";
     try {
       await navigator.clipboard.writeText(shareUrl);
       toast.success("链接已复制");
@@ -146,7 +146,7 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
         await navigator.share({
           title: "MINDFLOW 情绪急救",
           text: "我刚刚完成了一次情绪急救练习，推荐你也试试！",
-          url: "https://mindflow2.lovable.app",
+          url: "https://mind.lucids.top",
         });
       } catch (error) {
         // User cancelled or error
