@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, Calendar, LogOut } from 'lucide-react';
+import { User, Calendar, LogOut, Settings } from 'lucide-react';
 
 export function UserMenu() {
   const navigate = useNavigate();
@@ -40,8 +40,12 @@ export function UserMenu() {
           size="sm"
           className="rounded-xl gap-2"
         >
-          <div className="w-6 h-6 rounded-full bg-sage/20 flex items-center justify-center">
-            <User className="w-3.5 h-3.5 text-sage" />
+          <div className="w-6 h-6 rounded-full bg-sage/20 flex items-center justify-center overflow-hidden">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="头像" className="w-full h-full object-cover" />
+            ) : (
+              <User className="w-3.5 h-3.5 text-sage" />
+            )}
           </div>
           <span className="text-sm max-w-[80px] truncate">
             {profile?.username || '用户'}
@@ -49,6 +53,13 @@ export function UserMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48 rounded-xl">
+        <DropdownMenuItem
+          onClick={() => navigate('/profile')}
+          className="rounded-lg cursor-pointer"
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          个人资料
+        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => navigate('/history')}
           className="rounded-lg cursor-pointer"
