@@ -10,9 +10,14 @@ interface WelcomePageProps {
 export function WelcomePage({ onStart }: WelcomePageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-sage/5 to-lavender/5 flex flex-col">
-      {/* Header with User Menu */}
+      {/* Header with Logo and User Menu */}
       <div className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
-        <div className="max-w-md mx-auto px-4 py-4 flex justify-end">
+        <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🌿</span>
+            <span className="font-medium text-foreground">MindFlow AI</span>
+          </div>
           <UserMenu />
         </div>
       </div>
