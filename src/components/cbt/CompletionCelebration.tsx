@@ -1,15 +1,15 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import confetti from 'canvas-confetti';
-import { toPng } from 'html-to-image';
-import { Button } from '@/components/ui/button';
-import { Heart, RefreshCw, Check, LogIn, Download, Share2, Link, X } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSaveSession } from '@/hooks/useCBTHistory';
-import { CBTSessionState } from '@/types/cbt';
-import { ShareCard } from './ShareCard';
-import { toast } from 'sonner';
+import { useEffect, useState, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import confetti from "canvas-confetti";
+import { toPng } from "html-to-image";
+import { Button } from "@/components/ui/button";
+import { Heart, RefreshCw, Check, LogIn, Download, Share2, Link, X } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSaveSession } from "@/hooks/useCBTHistory";
+import { CBTSessionState } from "@/types/cbt";
+import { ShareCard } from "./ShareCard";
+import { toast } from "sonner";
 
 interface CompletionCelebrationProps {
   onReset: () => void;
@@ -17,11 +17,11 @@ interface CompletionCelebrationProps {
 }
 
 const encouragements = [
-  '你做得很棒！✨',
-  '每一步都是进步 💪',
-  '感谢你照顾自己的情绪 💝',
-  '你比想象中更坚强 🌟',
-  '这份努力值得被看见 🌈',
+  "你做得很棒！✨",
+  "每一步都是进步 💪",
+  "感谢你照顾自己的情绪 💝",
+  "你比想象中更坚强 🌟",
+  "这份努力值得被看见 🌈",
 ];
 
 export function CompletionCelebration({ onReset, sessionData }: CompletionCelebrationProps) {
@@ -66,7 +66,7 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
     const duration = 2000;
     const animationEnd = Date.now() + duration;
 
-    const colors = ['#C5B9E0', '#B8D4E3', '#9CAF88', '#FFD700'];
+    const colors = ["#C5B9E0", "#B8D4E3", "#9CAF88", "#FFD700"];
 
     const frame = () => {
       confetti({
@@ -105,17 +105,17 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
       const dataUrl = await toPng(cardRef.current, {
         quality: 1,
         pixelRatio: 2,
-        backgroundColor: '#FAF9F6',
+        backgroundColor: "#FAF9F6",
       });
 
-      const link = document.createElement('a');
-      link.download = `mindflow-${new Date().toISOString().split('T')[0]}.png`;
+      const link = document.createElement("a");
+      link.download = `mindflow-${new Date().toISOString().split("T")[0]}.png`;
       link.href = dataUrl;
       link.click();
-      toast.success('图片已保存');
+      toast.success("图片已保存");
     } catch (error) {
-      console.error('Error generating image:', error);
-      toast.error('保存失败，请重试');
+      console.error("Error generating image:", error);
+      toast.error("保存失败，请重试");
     } finally {
       setIsDownloading(false);
     }
@@ -123,19 +123,19 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
 
   // 复制分享链接
   const handleCopyLink = useCallback(async () => {
-    const shareUrl = 'https://mindflow2.lovable.app';
+    const shareUrl = "https://mind.lucids.top";
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success('链接已复制');
+      toast.success("链接已复制");
     } catch (error) {
       // Fallback for browsers that don't support clipboard API
-      const textArea = document.createElement('textarea');
+      const textArea = document.createElement("textarea");
       textArea.value = shareUrl;
       document.body.appendChild(textArea);
       textArea.select();
-      document.execCommand('copy');
+      document.execCommand("copy");
       document.body.removeChild(textArea);
-      toast.success('链接已复制');
+      toast.success("链接已复制");
     }
   }, []);
 
@@ -144,13 +144,13 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'MINDFLOW 情绪急救',
-          text: '我刚刚完成了一次情绪急救练习，推荐你也试试！',
-          url: 'https://mindflow2.lovable.app',
+          title: "MINDFLOW 情绪急救",
+          text: "我刚刚完成了一次情绪急救练习，推荐你也试试！",
+          url: "https://mindflow2.lovable.app",
         });
       } catch (error) {
         // User cancelled or error
-        if ((error as Error).name !== 'AbortError') {
+        if ((error as Error).name !== "AbortError") {
           handleCopyLink();
         }
       }
@@ -163,7 +163,7 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
       className="text-center space-y-6 py-4"
     >
       {/* 分享卡片展示 */}
@@ -207,12 +207,7 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
               <Share2 className="mr-2 h-4 w-4" />
               分享
             </Button>
-            <Button
-              onClick={handleCopyLink}
-              variant="ghost"
-              size="icon"
-              className="rounded-xl"
-            >
+            <Button onClick={handleCopyLink} variant="ghost" size="icon" className="rounded-xl">
               <Link className="h-4 w-4" />
             </Button>
           </motion.div>
@@ -234,11 +229,7 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
       </motion.div>
 
       {/* Save status */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-      >
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
         {isLoggedIn ? (
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             {saving ? (
@@ -255,7 +246,7 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
           </div>
         ) : (
           <button
-            onClick={() => navigate('/auth')}
+            onClick={() => navigate("/auth")}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <LogIn className="w-4 h-4" />
@@ -280,11 +271,7 @@ export function CompletionCelebration({ onReset, sessionData }: CompletionCelebr
           开始新的练习
         </Button>
         {isLoggedIn && (
-          <Button
-            onClick={() => navigate('/history')}
-            variant="ghost"
-            className="rounded-2xl px-6 h-12"
-          >
+          <Button onClick={() => navigate("/history")} variant="ghost" className="rounded-2xl px-6 h-12">
             查看历史记录
           </Button>
         )}
