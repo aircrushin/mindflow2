@@ -1,12 +1,27 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { CognitiveDistortionList } from './CognitiveDistortionTag';
 import { AIQuestionCard } from './AIQuestionCard';
+import { CrisisIntervention } from './CrisisIntervention';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { EmotionType } from '@/types/cbt';
 import { supabase } from '@/integrations/supabase/client';
+
+// 敏感词列表 - 检测可能需要危机干预的内容
+const CRISIS_KEYWORDS = [
+  '自杀', '想死', '不想活', '活不下去', '结束生命', '了结', '轻生',
+  '自残', '割腕', '跳楼', '自伤', '伤害自己',
+  '抑郁', '绝望', '没有希望', '活着没意思', '没有意义',
+  '崩溃', '撑不住', '受不了了', '太痛苦',
+];
+
+// 检测文本是否包含敏感词
+function detectCrisisKeywords(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  return CRISIS_KEYWORDS.some(keyword => lowerText.includes(keyword));
+}
 
 interface Step2Props {
   automaticThought: string;
@@ -37,6 +52,23 @@ export function Step2CognitiveRestructuring({
 }: Step2Props) {
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [hasRequestedAI, setHasRequestedAI] = useState(false);
+  const [showCrisisModal, setShowCrisisModal] = useState(false);
+  const [hasDismissedCrisis, setHasDismissedCrisis] = useState(false);
+
+  // 监听输入变化，检测敏感词
+  useEffect(() => {
+    // 如果用户已经关闭过模态框，不再自动弹出（避免反复打扰）
+    if (hasDismissedCrisis) return;
+    
+    if (detectCrisisKeywords(automaticThought) || detectCrisisKeywords(balancedThought)) {
+      setShowCrisisModal(true);
+    }
+  }, [automaticThought, balancedThought, hasDismissedCrisis]);
+
+  const handleDismissCrisis = () => {
+    setShowCrisisModal(false);
+    setHasDismissedCrisis(true);
+  };
 
   const requestAIQuestions = useCallback(async () => {
     if (!automaticThought.trim() || isLoadingAI) return;
@@ -71,13 +103,19 @@ export function Step2CognitiveRestructuring({
   }, [automaticThought, selectedEmotion, detectedDistortions, isLoadingAI, onAiQuestionsReceived]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 30 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -30 }}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="space-y-6"
-    >
+    <>
+      {/* 危机干预模态框 */}
+      {showCrisisModal && (
+        <CrisisIntervention onDismiss={handleDismissCrisis} />
+      )}
+
+      <motion.div
+        initial={{ opacity: 0, x: 30 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -30 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+        className="space-y-6"
+      >
       {/* 标题 */}
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-semibold text-foreground">第二步：认知重构</h2>
@@ -173,5 +211,6 @@ export function Step2CognitiveRestructuring({
         </Button>
       </div>
     </motion.div>
+    </>
   );
 }
