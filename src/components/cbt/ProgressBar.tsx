@@ -4,7 +4,7 @@ import { Check } from 'lucide-react';
 import { UserMenu } from './UserMenu';
 
 interface ProgressBarProps {
-  currentStep: 1 | 2 | 3;
+  currentStep: 0 | 1 | 2 | 3;
 }
 
 const steps = [

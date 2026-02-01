@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { CBTSessionState, EmotionType, COGNITIVE_DISTORTIONS, CRISIS_KEYWORDS } from '@/types/cbt';
 
 const initialState: CBTSessionState = {
-  step: 1,
+  step: 0,
   customEmotion: '',
   emotionIntensity: 5,
   selectedEmotion: null,
@@ -19,7 +19,7 @@ const initialState: CBTSessionState = {
 export function useCBTSession() {
   const [state, setState] = useState<CBTSessionState>(initialState);
 
-  const setStep = useCallback((step: 1 | 2 | 3) => {
+  const setStep = useCallback((step: 0 | 1 | 2 | 3) => {
     setState(prev => ({ ...prev, step }));
   }, []);
 
