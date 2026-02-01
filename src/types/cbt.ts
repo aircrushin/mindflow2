@@ -26,7 +26,7 @@ export interface ActionRecommendation {
 }
 
 export interface CBTSessionState {
-  step: 1 | 2 | 3;
+  step: 0 | 1 | 2 | 3;
   // Step 1
   customEmotion: string;
   emotionIntensity: number;

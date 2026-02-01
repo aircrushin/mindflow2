@@ -1,5 +1,6 @@
 import { AnimatePresence } from 'framer-motion';
 import { ProgressBar } from './ProgressBar';
+import { WelcomePage } from './WelcomePage';
 import { Step1EmotionNaming } from './Step1EmotionNaming';
 import { Step2CognitiveRestructuring } from './Step2CognitiveRestructuring';
 import { Step3MicroActions } from './Step3MicroActions';
@@ -24,6 +25,11 @@ export function CBTApp() {
     canProceedToStep2,
     canProceedToStep3,
   } = useCBTSession();
+
+  // 欢迎页面单独渲染
+  if (state.step === 0) {
+    return <WelcomePage onStart={() => setStep(1)} />;
+  }
 
   return (
     <div className="min-h-screen bg-background">
