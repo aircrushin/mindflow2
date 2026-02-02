@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { TypewriterText } from './TypewriterText';
 import { cn } from '@/lib/utils';
 import { EmotionType, EMOTIONS } from '@/types/cbt';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +11,7 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  isNew?: boolean; // 标记是否为新消息，用于打字机效果
 }
 
 interface CounselingChatProps {
@@ -64,6 +66,7 @@ export function CounselingChat({
           id: Date.now().toString(),
           role: 'assistant',
           content: data.message,
+          isNew: true,
         }]);
       }
     } catch (error) {
@@ -77,6 +80,7 @@ export function CounselingChat({
         id: Date.now().toString(),
         role: 'assistant',
         content: `我注意到你正在经历${emotionLabel}。我在这里陪伴你，愿意和我聊聊现在的感受吗？🌱`,
+        isNew: true,
       }]);
     } finally {
       setIsLoading(false);
@@ -123,6 +127,7 @@ export function CounselingChat({
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: data.message,
+          isNew: true,
         }]);
       }
     } catch (error) {
@@ -131,6 +136,7 @@ export function CounselingChat({
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: '抱歉，我暂时无法回应。请稍后再试，或者继续完成认知重构练习。💙',
+        isNew: true,
       }]);
     } finally {
       setIsLoading(false);
@@ -216,7 +222,20 @@ export function CounselingChat({
                         : 'bg-muted text-foreground rounded-bl-md'
                     )}
                   >
-                    {message.content}
+                    {message.role === 'assistant' && message.isNew ? (
+                      <TypewriterText
+                        text={message.content}
+                        speed={30}
+                        onComplete={() => {
+                          // 打字完成后标记为非新消息
+                          setMessages(prev => prev.map(m => 
+                            m.id === message.id ? { ...m, isNew: false } : m
+                          ));
+                        }}
+                      />
+                    ) : (
+                      message.content
+                    )}
                   </div>
                 </motion.div>
               ))}
