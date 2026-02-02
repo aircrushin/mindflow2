@@ -2,14 +2,16 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { TypewriterText } from './TypewriterText';
 import { cn } from '@/lib/utils';
 import { EmotionType, EMOTIONS } from '@/types/cbt';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  isStreaming?: boolean;
+  isNew?: boolean; // 标记是否为新消息，用于打字机效果
 }
 
 interface CounselingChatProps {
@@ -17,9 +19,6 @@ interface CounselingChatProps {
   automaticThought: string;
   detectedDistortions: string[];
 }
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export function CounselingChat({
   selectedEmotion,
@@ -31,7 +30,6 @@ export function CounselingChat({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -43,129 +41,55 @@ export function CounselingChat({
     scrollToBottom();
   }, [messages]);
 
-  // SSE 流式请求
-  const streamChat = useCallback(async (
-    chatMessages: { role: string; content: string }[],
-    isInitial: boolean,
-    onChunk: (chunk: string) => void,
-    onDone: () => void,
-    onError: (error: string) => void
-  ) => {
-    try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/counseling-chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          messages: chatMessages,
-          emotion: selectedEmotion,
-          automaticThought,
-          distortions: detectedDistortions,
-          isInitial,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || '请求失败');
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('无法读取响应流');
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed === 'data: [DONE]') continue;
-          if (!trimmed.startsWith('data: ')) continue;
-
-          try {
-            const json = JSON.parse(trimmed.slice(6));
-            if (json.content) {
-              onChunk(json.content);
-            }
-          } catch {
-            // 忽略解析错误
-          }
-        }
-      }
-
-      onDone();
-    } catch (error) {
-      console.error('Stream error:', error);
-      onError(error instanceof Error ? error.message : '连接失败');
-    }
-  }, [selectedEmotion, automaticThought, detectedDistortions]);
-
   // 当打开聊天窗口时，AI 主动发送第一条消息
   const initializeChat = useCallback(async () => {
-    if (hasInitialized) return;
+    if (hasInitialized || !isOpen) return;
     
     setHasInitialized(true);
     setIsLoading(true);
 
-    const messageId = Date.now().toString();
-    setMessages([{
-      id: messageId,
-      role: 'assistant',
-      content: '',
-      isStreaming: true,
-    }]);
+    try {
+      const { data, error } = await supabase.functions.invoke('counseling-chat', {
+        body: {
+          messages: [],
+          emotion: selectedEmotion,
+          automaticThought,
+          distortions: detectedDistortions,
+          isInitial: true,
+        },
+      });
 
-    await streamChat(
-      [],
-      true,
-      (chunk) => {
-        setMessages(prev => prev.map(m => 
-          m.id === messageId 
-            ? { ...m, content: m.content + chunk }
-            : m
-        ));
-      },
-      () => {
-        setMessages(prev => prev.map(m => 
-          m.id === messageId 
-            ? { ...m, isStreaming: false }
-            : m
-        ));
-        setIsLoading(false);
-      },
-      (error) => {
-        const emotionLabel = selectedEmotion 
-          ? EMOTIONS.find(e => e.id === selectedEmotion)?.label || '情绪困扰'
-          : '一些情绪';
-        
+      if (error) throw error;
+
+      if (data?.message) {
         setMessages([{
-          id: messageId,
+          id: Date.now().toString(),
           role: 'assistant',
-          content: `我注意到你正在经历${emotionLabel}。我在这里陪伴你，愿意和我聊聊现在的感受吗？🌱`,
-          isStreaming: false,
+          content: data.message,
+          isNew: true,
         }]);
-        setIsLoading(false);
-        console.error('Init chat error:', error);
       }
-    );
-  }, [hasInitialized, selectedEmotion, streamChat]);
+    } catch (error) {
+      console.error('Error initializing chat:', error);
+      // 使用默认问候语
+      const emotionLabel = selectedEmotion 
+        ? EMOTIONS.find(e => e.id === selectedEmotion)?.label || '情绪困扰'
+        : '一些情绪';
+      
+      setMessages([{
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `我注意到你正在经历${emotionLabel}。我在这里陪伴你，愿意和我聊聊现在的感受吗？🌱`,
+        isNew: true,
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [hasInitialized, isOpen, selectedEmotion, automaticThought, detectedDistortions]);
 
   useEffect(() => {
     if (isOpen && !hasInitialized) {
       initializeChat();
-    }
-    // 打开聊天窗口时清除未读计数
-    if (isOpen) {
-      setUnreadCount(0);
     }
   }, [isOpen, hasInitialized, initializeChat]);
 
@@ -178,55 +102,45 @@ export function CounselingChat({
       content: inputValue.trim(),
     };
 
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
 
-    const assistantMessageId = (Date.now() + 1).toString();
-    setMessages(prev => [...prev, {
-      id: assistantMessageId,
-      role: 'assistant',
-      content: '',
-      isStreaming: true,
-    }]);
+    try {
+      const { data, error } = await supabase.functions.invoke('counseling-chat', {
+        body: {
+          messages: [...messages, userMessage].map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+          emotion: selectedEmotion,
+          automaticThought,
+          distortions: detectedDistortions,
+          isInitial: false,
+        },
+      });
 
-    await streamChat(
-      newMessages.map(m => ({ role: m.role, content: m.content })),
-      false,
-      (chunk) => {
-        setMessages(prev => prev.map(m => 
-          m.id === assistantMessageId 
-            ? { ...m, content: m.content + chunk }
-            : m
-        ));
-      },
-      () => {
-        setMessages(prev => prev.map(m => 
-          m.id === assistantMessageId 
-            ? { ...m, isStreaming: false }
-            : m
-        ));
-        setIsLoading(false);
-        // 如果聊天窗口关闭，增加未读计数
-        if (!isOpen) {
-          setUnreadCount(prev => prev + 1);
-        }
-      },
-      (error) => {
-        setMessages(prev => prev.map(m => 
-          m.id === assistantMessageId 
-            ? { ...m, content: '抱歉，我暂时无法回应。请稍后再试，或者继续完成认知重构练习。💙', isStreaming: false }
-            : m
-        ));
-        setIsLoading(false);
-        // 如果聊天窗口关闭，增加未读计数
-        if (!isOpen) {
-          setUnreadCount(prev => prev + 1);
-        }
-        console.error('Send message error:', error);
+      if (error) throw error;
+
+      if (data?.message) {
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: data.message,
+          isNew: true,
+        }]);
       }
-    );
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: '抱歉，我暂时无法回应。请稍后再试，或者继续完成认知重构练习。💙',
+        isNew: true,
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -251,18 +165,8 @@ export function CounselingChat({
             className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-lavender hover:bg-lavender/90 text-white shadow-lg flex items-center justify-center transition-colors"
           >
             <MessageCircle className="h-6 w-6" />
-            {/* 未读消息计数徽章 */}
-            {unreadCount > 0 ? (
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 bg-rose-500 rounded-full flex items-center justify-center text-xs font-medium text-white"
-              >
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </motion.span>
-            ) : (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-sage rounded-full animate-pulse" />
-            )}
+            {/* 提示小点 */}
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-sage rounded-full animate-pulse" />
           </motion.button>
         )}
       </AnimatePresence>
@@ -318,13 +222,40 @@ export function CounselingChat({
                         : 'bg-muted text-foreground rounded-bl-md'
                     )}
                   >
-                    {message.content}
-                    {message.isStreaming && (
-                      <span className="inline-block w-1.5 h-4 ml-0.5 bg-lavender/60 animate-pulse" />
+                    {message.role === 'assistant' && message.isNew ? (
+                      <TypewriterText
+                        text={message.content}
+                        speed={30}
+                        onComplete={() => {
+                          // 打字完成后标记为非新消息
+                          setMessages(prev => prev.map(m => 
+                            m.id === message.id ? { ...m, isNew: false } : m
+                          ));
+                        }}
+                      />
+                    ) : (
+                      message.content
                     )}
                   </div>
                 </motion.div>
               ))}
+              
+              {/* 加载指示器 */}
+              {isLoading && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex justify-start"
+                >
+                  <div className="bg-muted px-4 py-2.5 rounded-2xl rounded-bl-md">
+                    <div className="flex items-center gap-1">
+                      <span className="w-2 h-2 bg-lavender/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2 h-2 bg-lavender/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2 h-2 bg-lavender/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
               
               <div ref={messagesEndRef} />
             </div>
