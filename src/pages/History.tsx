@@ -9,6 +9,7 @@ import { useCBTHistory, CBTSession } from '@/hooks/useCBTHistory';
 import { HistoryCalendar } from '@/components/history/HistoryCalendar';
 import { SessionList } from '@/components/history/SessionList';
 import { SessionDetail } from '@/components/history/SessionDetail';
+import { EmotionTrendChart } from '@/components/history/EmotionTrendChart';
 import { Button } from '@/components/ui/button';
 
 export default function History() {
@@ -71,6 +72,11 @@ export default function History() {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
+          {/* Emotion Trend Chart */}
+          {sessions && sessions.length > 0 && (
+            <EmotionTrendChart sessions={sessions} />
+          )}
+
           {/* Calendar */}
           <div className="bg-card rounded-3xl soft-shadow overflow-hidden">
             <HistoryCalendar
