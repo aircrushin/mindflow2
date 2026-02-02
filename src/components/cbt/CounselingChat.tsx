@@ -30,6 +30,7 @@ export function CounselingChat({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -43,7 +44,7 @@ export function CounselingChat({
 
   // 当打开聊天窗口时，AI 主动发送第一条消息
   const initializeChat = useCallback(async () => {
-    if (hasInitialized || !isOpen) return;
+    if (hasInitialized) return;
     
     setHasInitialized(true);
     setIsLoading(true);
@@ -91,6 +92,10 @@ export function CounselingChat({
     if (isOpen && !hasInitialized) {
       initializeChat();
     }
+    // 打开聊天窗口时清除未读计数
+    if (isOpen) {
+      setUnreadCount(0);
+    }
   }, [isOpen, hasInitialized, initializeChat]);
 
   const sendMessage = async () => {
@@ -129,6 +134,10 @@ export function CounselingChat({
           content: data.message,
           isNew: true,
         }]);
+        // 如果聊天窗口关闭，增加未读计数
+        if (!isOpen) {
+          setUnreadCount(prev => prev + 1);
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -138,6 +147,10 @@ export function CounselingChat({
         content: '抱歉，我暂时无法回应。请稍后再试，或者继续完成认知重构练习。💙',
         isNew: true,
       }]);
+      // 如果聊天窗口关闭，增加未读计数
+      if (!isOpen) {
+        setUnreadCount(prev => prev + 1);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -165,8 +178,18 @@ export function CounselingChat({
             className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-lavender hover:bg-lavender/90 text-white shadow-lg flex items-center justify-center transition-colors"
           >
             <MessageCircle className="h-6 w-6" />
-            {/* 提示小点 */}
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-sage rounded-full animate-pulse" />
+            {/* 未读消息计数徽章 */}
+            {unreadCount > 0 ? (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 bg-rose-500 rounded-full flex items-center justify-center text-xs font-medium text-white"
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </motion.span>
+            ) : (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-sage rounded-full animate-pulse" />
+            )}
           </motion.button>
         )}
       </AnimatePresence>
