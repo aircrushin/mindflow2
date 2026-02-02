@@ -68,6 +68,7 @@ ${contextInfo}
       }
     }
 
+    // 使用流式响应
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -79,6 +80,7 @@ ${contextInfo}
         messages: apiMessages,
         max_tokens: 300,
         temperature: 0.8,
+        stream: true,
       }),
     });
 
@@ -100,13 +102,59 @@ ${contextInfo}
       throw new Error("AI 服务暂时不可用");
     }
 
-    const data = await response.json();
-    const message = data.choices?.[0]?.message?.content || "";
+    // 返回 SSE 流式响应
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body?.getReader();
+        if (!reader) {
+          controller.close();
+          return;
+        }
 
-    return new Response(
-      JSON.stringify({ message: message.trim() }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || trimmed === "data: [DONE]") continue;
+              if (!trimmed.startsWith("data: ")) continue;
+
+              try {
+                const json = JSON.parse(trimmed.slice(6));
+                const content = json.choices?.[0]?.delta?.content;
+                if (content) {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                }
+              } catch {
+                // 忽略解析错误
+              }
+            }
+          }
+        } finally {
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
   } catch (error) {
     console.error("Error in counseling-chat:", error);
     return new Response(
