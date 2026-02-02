@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CognitiveDistortionList } from './CognitiveDistortionTag';
 import { AIQuestionCard } from './AIQuestionCard';
 import { CrisisIntervention } from './CrisisIntervention';
+import { CounselingChat } from './CounselingChat';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { EmotionType } from '@/types/cbt';
 import { supabase } from '@/integrations/supabase/client';
@@ -234,6 +235,13 @@ export function Step2CognitiveRestructuring({
         </Button>
       </div>
     </motion.div>
+
+    {/* 心理疏导聊天气泡 */}
+    <CounselingChat
+      selectedEmotion={selectedEmotion}
+      automaticThought={automaticThought}
+      detectedDistortions={detectedDistortions}
+    />
     </>
   );
 }
