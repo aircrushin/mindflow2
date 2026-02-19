@@ -18,12 +18,16 @@ interface CounselingChatProps {
   selectedEmotion: EmotionType | null;
   automaticThought: string;
   detectedDistortions: string[];
+  emotionIntensity: number;
+  bodySensation: string;
 }
 
 export function CounselingChat({
   selectedEmotion,
   automaticThought,
   detectedDistortions,
+  emotionIntensity,
+  bodySensation,
 }: CounselingChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -55,6 +59,8 @@ export function CounselingChat({
           emotion: selectedEmotion,
           automaticThought,
           distortions: detectedDistortions,
+          emotionIntensity,
+          bodySensation,
           isInitial: true,
         },
       });
@@ -116,6 +122,8 @@ export function CounselingChat({
           emotion: selectedEmotion,
           automaticThought,
           distortions: detectedDistortions,
+          emotionIntensity,
+          bodySensation,
           isInitial: false,
         },
       });
