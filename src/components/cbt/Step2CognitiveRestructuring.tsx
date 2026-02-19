@@ -30,6 +30,8 @@ interface Step2Props {
   aiQuestions: string[];
   balancedThought: string;
   selectedEmotion: EmotionType | null;
+  emotionIntensity: number;
+  bodySensation: string;
   onAutomaticThoughtChange: (value: string) => void;
   onAiQuestionsReceived: (questions: string[]) => void;
   onBalancedThoughtChange: (value: string) => void;
@@ -44,6 +46,8 @@ export function Step2CognitiveRestructuring({
   aiQuestions,
   balancedThought,
   selectedEmotion,
+  emotionIntensity,
+  bodySensation,
   onAutomaticThoughtChange,
   onAiQuestionsReceived,
   onBalancedThoughtChange,
@@ -93,6 +97,7 @@ export function Step2CognitiveRestructuring({
           thought: automaticThought,
           emotion: selectedEmotion,
           distortions: detectedDistortions,
+          emotionIntensity,
         },
       });
 
@@ -241,6 +246,8 @@ export function Step2CognitiveRestructuring({
       selectedEmotion={selectedEmotion}
       automaticThought={automaticThought}
       detectedDistortions={detectedDistortions}
+      emotionIntensity={emotionIntensity}
+      bodySensation={bodySensation}
     />
     </>
   );

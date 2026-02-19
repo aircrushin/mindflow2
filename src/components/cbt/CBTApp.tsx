@@ -70,6 +70,8 @@ export function CBTApp() {
               aiQuestions={state.aiQuestions}
               balancedThought={state.balancedThought}
               selectedEmotion={state.selectedEmotion}
+              emotionIntensity={state.emotionIntensity}
+              bodySensation={state.bodySensation}
               onAutomaticThoughtChange={setAutomaticThought}
               onAiQuestionsReceived={setAiQuestions}
               onBalancedThoughtChange={setBalancedThought}
