@@ -1,205 +1,106 @@
 
-# 登录注册与历史记录功能实施计划
 
-## 功能概述
+# PEAR 心理认知架构集成方案
 
-为 CBT 情绪急救工具添加用户系统和历史记录功能：
-- 支持邮箱或用户名登录/注册
-- 登录用户的每次情绪急救结果自动保存
-- 日历形式的历史记录页面
-- 可以回溯查看每次的心情变化详情
+## 概述
+
+将 PEAR（Personality-Emotion-Awareness-Resonance）心理认知架构融入现有 CBT 工具的 AI 能力中，主要通过重构两个 Edge Function 的 system prompt 和新增情绪上下文传递逻辑来实现。
 
 ---
 
-## 数据库设计
+## 一、改造范围
 
-### profiles 表（用户资料）
-存储用户的扩展信息，支持用户名登录
+当前项目有两个 AI 交互点：
+1. **苏格拉底式提问**（`socratic-questions`）：根据用户自动思维生成引导问题
+2. **心理疏导聊天**（`counseling-chat`）：实时陪伴对话
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | uuid | 主键，关联 auth.users |
-| username | text | 用户名（唯一，可用于登录） |
-| email | text | 用户的邮箱 |
-| created_at | timestamp | 创建时间 |
-
-### cbt_sessions 表（情绪记录）
-存储每次完成的 CBT 练习
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | uuid | 主键 |
-| user_id | uuid | 用户 ID |
-| completed_at | timestamp | 完成时间 |
-| custom_emotion | text | 自定义情绪描述 |
-| selected_emotion | text | 选择的情绪类型 |
-| emotion_intensity | integer | 情绪强度 (0-10) |
-| body_sensation | text | 身体感受 |
-| automatic_thought | text | 自动思维 |
-| detected_distortions | text[] | 检测到的认知偏误 |
-| ai_questions | text[] | AI 生成的问题 |
-| balanced_thought | text | 平衡思维 |
-| selected_action | text | 选择的行动 |
+两者的 prompt 目前都比较简单，缺乏人格一致性、情绪深度感知、动态共鸣调节和自我觉知能力。
 
 ---
 
-## 页面结构
+## 二、具体改造内容
 
-### 新增页面
+### 1. Personality 人格映射层 -- 统一 AI 人格设定
 
-1. **/auth** - 登录/注册页面
-   - 标签页切换：登录 / 注册
-   - 登录支持：邮箱或用户名 + 密码
-   - 注册需要：用户名 + 邮箱 + 密码
-   - 保持鼠尾草绿的品牌风格
+**改动文件**: `supabase/functions/counseling-chat/index.ts`, `supabase/functions/socratic-questions/index.ts`
 
-2. **/history** - 历史记录页面
-   - 日历视图：显示有记录的日期（用颜色标记）
-   - 点击日期展开当天的记录列表
-   - 每条记录显示：时间、情绪、强度
-   - 点击记录查看完整详情
+在两个 Edge Function 中建立统一的人格锚点常量，确保 AI 在所有交互场景中保持一致的 "心灵伙伴" 人格：
 
-### 修改现有页面
+- 定义人格向量参数（高宜人性、中高开放性、低神经质）
+- 设定核心人格规则：80% 共情 + 20% 理性引导
+- 统一回应风格：温暖倾听者，语气柔和但不过度讨好
 
-1. **进度条组件** - 添加用户状态
-   - 右上角显示用户头像/登录按钮
-   - 未登录：显示"登录"按钮
-   - 已登录：显示用户名和下拉菜单（历史记录、退出）
+### 2. Emotion 情绪感知层 -- 增强情绪上下文传递
 
-2. **完成页面** - 自动保存
-   - 登录用户完成练习后自动保存
-   - 显示"已保存到历史记录"提示
-   - 未登录用户显示"登录后可保存记录"
+**改动文件**: `src/components/cbt/CounselingChat.tsx`, `supabase/functions/counseling-chat/index.ts`
 
----
+当前只传递 `emotion`（情绪类型）和 `automaticThought`，缺少情绪强度和身体感受等关键维度。
 
-## 技术实现
+- 前端：将 `emotionIntensity`（情绪强度）和 `bodySensation`（身体感受）也传递给聊天组件和 Edge Function
+- 后端：构建 PAD 三维情感上下文（基于情绪类型推断愉悦度，用强度值映射唤醒度），写入 system prompt
+- 在 `Step2CognitiveRestructuring.tsx` 中补充传递 `emotionIntensity` 和 `bodySensation` 给 `CounselingChat`
 
-### 1. 认证上下文
-创建 `AuthContext` 管理全局用户状态：
-- 监听 `onAuthStateChange` 事件
-- 提供 `signIn`、`signUp`、`signOut` 方法
-- 自动获取用户 profile 信息
+### 3. Awareness 自我觉知层 -- 对话记忆与策略调整
 
-### 2. 用户名登录逻辑
-由于数据库不直接支持用户名登录，实现方式：
-- 用户输入用户名或邮箱
-- 如果输入包含 `@`，直接用邮箱登录
-- 否则先查询 profiles 表获取对应邮箱，再登录
+**改动文件**: `supabase/functions/counseling-chat/index.ts`
 
-### 3. 数据保存时机
-- 在 `CompletionCelebration` 组件挂载时
-- 如果用户已登录，调用 `saveSession` 保存数据
-- 使用 React Query 的 mutation 处理
+在 system prompt 中加入元认知指令：
 
-### 4. 日历组件
-- 使用已有的 `react-day-picker` 组件
-- 自定义日期单元格样式（有记录的日期高亮）
-- 点击日期加载当天的记录
+- 要求 AI 追踪对话中用户情绪变化（通过分析上下文消息的情绪走向）
+- 加入叙事张力管理规则：连续 3 轮用户情绪未改善时切换策略（从共情转向引导行动）
+- 加入情绪反馈循环指令：根据用户对前一条回复的反应调整下一条的风格
+
+### 4. Resonance 动态共鸣层 -- 情绪同频响应
+
+**改动文件**: `supabase/functions/counseling-chat/index.ts`, `supabase/functions/socratic-questions/index.ts`
+
+根据情绪强度动态调整共鸣策略：
+
+- 强度 >= 8（高）：90% 共情 + 10% 陪伴，不引导、不分析，先稳定情绪
+- 强度 5-7（中）：60% 共情 + 30% 引导 + 10% 正念提示
+- 强度 <= 4（低）：40% 共情 + 40% 认知引导 + 20% 行动建议
+- 避免情绪错位规则（悲伤时不用幽默，愤怒时不说教）
 
 ---
 
-## 文件变更清单
+## 三、技术细节
 
-### 新建文件
+### 前端改动
 
-```text
-src/contexts/AuthContext.tsx     # 认证上下文
-src/pages/Auth.tsx               # 登录/注册页面
-src/pages/History.tsx            # 历史记录页面
-src/components/history/          # 历史记录相关组件
-  ├── HistoryCalendar.tsx        # 日历视图
-  ├── SessionList.tsx            # 记录列表
-  └── SessionDetail.tsx          # 记录详情
-src/components/cbt/UserMenu.tsx  # 用户菜单组件
-src/hooks/useCBTHistory.ts       # 历史数据查询 hook
-```
+**文件 `src/components/cbt/Step2CognitiveRestructuring.tsx`**:
+- 新增 props: `emotionIntensity: number`, `bodySensation: string`
+- 透传给 `CounselingChat` 组件
 
-### 修改文件
+**文件 `src/components/cbt/CounselingChat.tsx`**:
+- 接收并在 API 调用中传递 `emotionIntensity` 和 `bodySensation`
 
-```text
-src/App.tsx                      # 添加路由和 AuthProvider
-src/components/cbt/ProgressBar.tsx    # 添加用户菜单
-src/components/cbt/CompletionCelebration.tsx  # 添加保存逻辑
-src/hooks/useCBTSession.ts       # 添加 getSessionData 方法
-```
+**文件 `src/components/cbt/CBTApp.tsx`**:
+- 将 `state.emotionIntensity` 和 `state.bodySensation` 传递给 Step2 组件
 
----
+### 后端改动
 
-## 安全设计
+**文件 `supabase/functions/counseling-chat/index.ts`**:
+- 新增 `buildPersonalityAnchor()` 函数，返回人格设定文本
+- 新增 `buildEmotionContext()` 函数，基于情绪类型 + 强度 + 身体感受构建 PAD 三维描述
+- 新增 `getResonanceStrategy()` 函数，根据强度返回共鸣比例配置
+- 重构 system prompt，整合四层 PEAR 指令
 
-### RLS 策略
-
-**profiles 表**
-- SELECT: 所有已认证用户可查询（用于用户名登录查询）
-- INSERT: 仅能插入自己的 profile
-- UPDATE: 仅能更新自己的 profile
-
-**cbt_sessions 表**
-- SELECT: 仅能查看自己的记录
-- INSERT: 仅能插入 user_id = auth.uid() 的记录
-- UPDATE/DELETE: 不允许（保持记录完整性）
+**文件 `supabase/functions/socratic-questions/index.ts`**:
+- 接收 `emotionIntensity` 参数
+- 加入人格一致性指令和动态共鸣规则
+- 高强度时生成更柔和的问题，低强度时适当增加认知挑战
 
 ---
 
-## 用户体验流程
+## 四、改动文件清单
 
-```text
-未登录用户：
-┌─────────────────────────────────────────────────┐
-│  使用 CBT 工具 → 完成练习 → 提示"登录可保存"   │
-│                    ↓                             │
-│              点击登录按钮                        │
-│                    ↓                             │
-│           跳转登录页 → 登录成功                 │
-│                    ↓                             │
-│           返回首页，下次记录自动保存             │
-└─────────────────────────────────────────────────┘
+| 文件 | 改动类型 |
+|------|----------|
+| `supabase/functions/counseling-chat/index.ts` | 重构 prompt + 新增 PEAR 逻辑函数 |
+| `supabase/functions/socratic-questions/index.ts` | 增强 prompt + 接收强度参数 |
+| `src/components/cbt/CounselingChat.tsx` | 新增 props 传递 |
+| `src/components/cbt/Step2CognitiveRestructuring.tsx` | 新增 props 接收与透传 |
+| `src/components/cbt/CBTApp.tsx` | 补充传递 emotionIntensity 和 bodySensation |
 
-已登录用户：
-┌─────────────────────────────────────────────────┐
-│  使用 CBT 工具 → 完成练习 → 自动保存           │
-│                    ↓                             │
-│           显示"已保存"提示                      │
-│                    ↓                             │
-│     点击用户头像 → 历史记录 → 日历视图         │
-│                    ↓                             │
-│          选择日期 → 查看当天记录详情            │
-└─────────────────────────────────────────────────┘
-```
-
----
-
-## 界面设计
-
-### 登录页面
-- 居中卡片布局，延续圆角风格
-- 顶部：logo + 应用名
-- 标签切换：登录 / 注册
-- 输入框：圆角、柔和边框
-- 按钮：鼠尾草绿主色
-
-### 历史记录页面
-- 顶部：月份切换导航
-- 日历：有记录的日期用薰衣草紫点标记
-- 下方：选中日期的记录列表
-- 点击记录展开详情抽屉
-
-### 详情抽屉
-- 显示完整的三步信息
-- 情绪强度以温度计形式呈现
-- AI 问题以卡片形式展示
-- 底部显示完成时间
-
----
-
-## 实施顺序
-
-1. **数据库迁移** - 创建 profiles 和 cbt_sessions 表
-2. **认证上下文** - 实现 AuthContext
-3. **登录/注册页面** - 完成 Auth 页面
-4. **用户菜单** - 修改进度条添加用户入口
-5. **保存功能** - 修改完成页面自动保存
-6. **历史记录页面** - 实现日历和详情查看
-7. **测试验证** - 完整流程测试
+不需要新建数据库表或修改现有表结构，所有改动集中在 prompt 工程和前端上下文传递。
 
